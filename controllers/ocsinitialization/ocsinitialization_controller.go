@@ -96,7 +96,7 @@ func (r *OCSInitializationReconciler) Reconcile(ctx context.Context, request rec
 	r.Log = r.Log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	r.ctx = ctx
 
-	r.Log.Info("Reconciling OCSInitialization.", "OCSInitialization", klog.KRef(request.Namespace, request.Name))
+	r.Log.Info("Reconciling OCSInitialization. SDSD", "OCSInitialization", klog.KRef(request.Namespace, request.Name))
 
 	initNamespacedName := InitNamespacedName()
 	instance := &ocsv1.OCSInitialization{}
