@@ -2,18 +2,24 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
 	"testing"
 
+	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
 	ocsv1a1 "github.com/red-hat-storage/ocs-operator/api/v4/v1alpha1"
 	pb "github.com/red-hat-storage/ocs-operator/services/provider/api/v4"
+	"github.com/red-hat-storage/ocs-operator/v4/controllers/util"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestReplaceMsgr1PortWithMsgr2(t *testing.T) {
@@ -122,28 +128,146 @@ func TestGetKubeResourcesForClass(t *testing.T) {
 	}
 }
 
-// currently Notify is unimplemented, so we just test that the unimplemented error is returned
-func TestNotify_Unimplemented(t *testing.T) {
-	// setup (service and request)
-	srv := &OCSProviderServer{}
-	req := &pb.NotifyRequest{
-		ClientID: "client-123",
-		Event:    pb.Event_OBC_CREATE,
-	}
-
-	// call Notify
+func TestNotify(t *testing.T) {
 	ctx := context.Background()
-	resp, err := srv.Notify(ctx, req)
-
-	// check the response and error
-	if resp != nil {
-		t.Fatalf("expected nil response, got %#v", resp)
+	storageConsumer := &ocsv1a1.StorageConsumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-consumer",
+			Namespace: testNamespace,
+			UID:       "client-123",
+		},
 	}
-	if err == nil {
-		t.Fatalf("expected error, got nil")
+	obcPayload := map[string]interface{}{
+		"name":               "test-obc",
+		"namespace":          "app-namespace",
+		"storageClassName":   "openshift-storage.noobaa.io",
+		"generateBucketName": "test-obc-0402",
+	}
+	payloadBytes, err := json.Marshal(obcPayload)
+	if err != nil {
+		t.Fatalf("failed to marshal OBC payload: %v", err)
 	}
 
-	if status.Code(err) != codes.Unimplemented {
-		t.Fatalf("expected Unimplemented, got %v", status.Code(err))
+	tests := []struct {
+		name        string
+		setupServer func(t *testing.T) *OCSProviderServer
+		req         *pb.NotifyRequest
+		wantErrCode codes.Code
+		validate    func(t *testing.T, srv *OCSProviderServer)
+	}{
+		{
+			name: "unspecified action returns internal",
+			setupServer: func(t *testing.T) *OCSProviderServer {
+				return &OCSProviderServer{}
+			},
+			req: &pb.NotifyRequest{
+				ClientID: "client-123",
+				Event:    pb.Event_OBC_ACTION_UNSPECIFIED,
+			},
+			wantErrCode: codes.Internal,
+		},
+		{
+			name: "obc create request creates resource",
+			setupServer: func(t *testing.T) *OCSProviderServer {
+				scheme, schemeErr := newScheme()
+				if schemeErr != nil {
+					t.Fatalf("newScheme() error = %v", schemeErr)
+				}
+				fakeClient := fake.NewClientBuilder().
+					WithScheme(scheme).
+					WithObjects(storageConsumer).
+					WithIndex(&ocsv1a1.StorageConsumer{}, util.ObjectUidIndexName, util.ObjectUidIndexFieldFunc).
+					Build()
+				return &OCSProviderServer{
+					client:          fakeClient,
+					consumerManager: createTestConsumerManager(fakeClient),
+					namespace:       testNamespace,
+				}
+			},
+			req: &pb.NotifyRequest{
+				ClientID: string(storageConsumer.UID),
+				Event:    pb.Event_OBC_CREATE,
+				Payload:  payloadBytes,
+			},
+			wantErrCode: codes.OK,
+			validate: func(t *testing.T, srv *OCSProviderServer) {
+				expectedName := "remote-obc-" + getObcHash(string(storageConsumer.UID), "test-obc", "app-namespace")
+				obc := &nbv1.ObjectBucketClaim{}
+				if err := srv.client.Get(ctx, types.NamespacedName{
+					Name:      expectedName,
+					Namespace: testNamespace,
+				}, obc); err != nil {
+					t.Fatalf("expected OBC to be created: %v", err)
+				}
+
+				labelValue := createObcLabelValue(ctx, storageConsumer.Name, "test-obc", "app-namespace")
+				if obc.Labels[labelKey] != labelValue {
+					t.Fatalf("expected label %s=%s, got %v", labelKey, labelValue, obc.Labels)
+				}
+				if obc.Annotations[annotationKeyRemoteOBCCreation] != "true" {
+					t.Fatalf("expected annotation %s=true, got %v", annotationKeyRemoteOBCCreation, obc.Annotations)
+				}
+				if obc.Annotations[annotationKeyRemoteOBCOriginalName] != "test-obc" {
+					t.Fatalf("expected annotation %s=test-obc, got %v", annotationKeyRemoteOBCOriginalName, obc.Annotations)
+				}
+				if obc.Annotations[annotationKeyRemoteOBCOriginalNamespace] != "app-namespace" {
+					t.Fatalf("expected annotation %s=app-namespace, got %v", annotationKeyRemoteOBCOriginalNamespace, obc.Annotations)
+				}
+
+				if obc.Spec.StorageClassName != "openshift-storage.noobaa.io" {
+					t.Fatalf("expected storageClassName test-obc-0402, got %q", obc.Spec.StorageClassName)
+				}
+				if obc.Spec.GenerateBucketName != "test-obc-0402" {
+					t.Fatalf("expected generateBucketName test-obc-0402, got %q", obc.Spec.GenerateBucketName)
+				}
+
+				if len(obc.OwnerReferences) == 0 {
+					t.Fatalf("expected ownerReferences to be set")
+				}
+				foundOwner := false
+				for _, ownerRef := range obc.OwnerReferences {
+					if ownerRef.Kind == "StorageConsumer" &&
+						ownerRef.Name == storageConsumer.Name &&
+						ownerRef.UID == storageConsumer.UID &&
+						ownerRef.APIVersion == ocsv1a1.GroupVersion.String() {
+						foundOwner = true
+						break
+					}
+				}
+				if !foundOwner {
+					t.Fatalf("expected StorageConsumer owner reference, got %v", obc.OwnerReferences)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := tt.setupServer(t)
+			resp, err := srv.Notify(ctx, tt.req)
+
+			if tt.wantErrCode == codes.OK {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				if resp == nil {
+					t.Fatalf("expected non-nil response")
+				}
+			} else {
+				if resp != nil {
+					t.Fatalf("expected nil response, got %#v", resp)
+				}
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				if status.Code(err) != tt.wantErrCode {
+					t.Fatalf("expected %v error, got %v", tt.wantErrCode, status.Code(err))
+				}
+			}
+
+			if tt.validate != nil {
+				tt.validate(t, srv)
+			}
+		})
 	}
 }
