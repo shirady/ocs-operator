@@ -122,13 +122,14 @@ func TestGetKubeResourcesForClass(t *testing.T) {
 	}
 }
 
-// currently Notify is unimplemented, so we just test that the unimplemented error is returned
-func TestNotify_Unimplemented(t *testing.T) {
+// currently Notify is during implementation
+// so we just test that the Event_OBC_ACTION_UNSPECIFIED
+func TestNotify(t *testing.T) {
 	// setup (service and request)
 	srv := &OCSProviderServer{}
 	req := &pb.NotifyRequest{
 		ClientID: "client-123",
-		Event:    pb.Event_OBC_CREATE,
+		Event:    pb.Event_OBC_ACTION_UNSPECIFIED,
 	}
 
 	// call Notify
@@ -143,7 +144,7 @@ func TestNotify_Unimplemented(t *testing.T) {
 		t.Fatalf("expected error, got nil")
 	}
 
-	if status.Code(err) != codes.Unimplemented {
-		t.Fatalf("expected Unimplemented, got %v", status.Code(err))
+	if status.Code(err) != codes.Internal {
+		t.Fatalf("expected Internal error, got %v", status.Code(err))
 	}
 }

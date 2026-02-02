@@ -2321,5 +2321,29 @@ func (s *OCSProviderServer) Notify(ctx context.Context, req *pb.NotifyRequest) (
 	logger := klog.FromContext(ctx).WithName("Notify").WithValues("client ID", req.ClientID)
 	logger.Info("Starting Notify RPC", "event", req.Event)
 
-	return nil, status.Error(codes.Unimplemented, "Notify is not implemented yet")
+	if req.Event == pb.Event_OBC_ACTION_UNSPECIFIED {
+		logger.Info("Notify RPC: No action specified in Notify RPC request, will create an error")
+		return nil, status.Errorf(codes.Internal, "Notify RPC: failed to find the OBC action in the Notify RPC request")
+	}
+
+	if req.Event == pb.Event_OBC_CREATE {
+		if err := s.handleOBCreation(ctx, req.ClientID, req.Payload); err != nil {
+			logger.Error(err, "Notify RPC: Failed to handle OBC creation")
+			return nil, err
+		}
+		logger.Info("Notify RPC: Successfully handled OBC creation Notify RPC")
+	}
+
+	if req.Event == pb.Event_OBC_DELETE {
+		logger.Info("Notify RPC: Starting Notify RPC", "event", req.Event)
+		return nil, status.Error(codes.Unimplemented, "handled OBC deletion is not implemented yet")
+	}
+
+	if req.Event == pb.Event_OBC_UPDATE {
+		logger.Info("Notify RPC: Starting Notify RPC", "event", req.Event)
+		return nil, status.Error(codes.Unimplemented, "handled OBC update is not implemented yet")
+	}
+
+	logger.Info("Notify RPC: Successfully completed Notify RPC")
+	return &pb.NotifyResponse{}, nil
 }
