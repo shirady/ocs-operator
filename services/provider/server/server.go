@@ -2335,8 +2335,11 @@ func (s *OCSProviderServer) Notify(ctx context.Context, req *pb.NotifyRequest) (
 	}
 
 	if req.Event == pb.Event_OBC_DELETE {
-		logger.Info("Notify RPC: Starting Notify RPC", "event", req.Event)
-		return nil, status.Error(codes.Unimplemented, "handled OBC deletion is not implemented yet")
+		if err := s.handleObcDelete(ctx, req.ClientID, req.Payload); err != nil {
+			logger.Error(err, "Notify RPC: Failed to handle OBC deletion")
+			return nil, err
+		}
+		logger.Info("Notify RPC: Successfully handled OBC deletion Notify RPC")
 	}
 
 	if req.Event == pb.Event_OBC_UPDATE {

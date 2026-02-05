@@ -22,6 +22,7 @@ const (
 	annotationKeyRemoteOBCCreation          = "remote-obc-creation"
 	annotationKeyRemoteOBCOriginalName      = "remote-obc-original-name"
 	annotationKeyRemoteOBCOriginalNamespace = "remote-obc-original-namespace"
+	prefixOfHashedName                      = "remote-obc"
 )
 
 // handleObcCreate create the OBC that the client cluster asked for on the provider cluster.
@@ -83,9 +84,7 @@ func (s *OCSProviderServer) handleObcCreate(ctx context.Context, clientID string
 	// (4) build OBC object
 	obc := &nbv1.ObjectBucketClaim{}
 	// set resource name to a hash based on storage consumer UUID, OBC name, and OBC namespace
-	hash := getObcHash(storageConsumerUUID, obcNameClient, namespaceNameClient)
-	// use obscure name to avoid collisions
-	obc.Name = fmt.Sprintf("remote-obc-%s", hash)
+	obc.Name = getObcHashedName(storageConsumerUUID, obcNameClient, namespaceNameClient)
 	// create in the namespace associated with the provider server
 	obc.Namespace = s.namespace
 
@@ -131,9 +130,59 @@ func (s *OCSProviderServer) handleObcCreate(ctx context.Context, clientID string
 	logger.Info("handleObcCreate: Creating OBC resource", "name", obc.Name, "namespace", obc.Namespace)
 	if err := s.client.Create(ctx, obc); err != nil {
 		logger.Error(err, "handleObcCreate: Failed to create OBC resource:", "storageConsumerUUID", storageConsumerUUID, "storageConsumerName", storageConsumerName, "name", obc.Name, "namespace", obc.Namespace)
-		return status.Errorf(codes.Internal, "failed to create OBC %s/%s: %v", obc.Namespace, obc.Name, err)
+		return status.Errorf(codes.Internal, "failed to create OBC name %s namespace %s: %v", obcNameClient, namespaceNameClient, err)
 	}
 	logger.Info("handleObcCreate: Successfully created OBC resource", "name", obc.Name, "namespace", obc.Namespace)
+	return nil
+}
+
+// handleObcDelete delete the OBC that the client cluster asked for on the provider cluster.
+// It is a synchronous call, we do not wait for resources to be deleted.
+// Notes:
+//   - OBC is deleted from the provider server namespace.
+func (s *OCSProviderServer) handleObcDelete(ctx context.Context, clientID string, payload []byte) error {
+	logger := klog.FromContext(ctx).WithName("handleObcDelete")
+	logger.Info("handleObcDelete: Starting handleObcDelete", "clientID", clientID)
+
+	storageConsumerUUID := clientID // SDSD temp
+
+	// (1) parse the payload to extract OBC details
+	var obcDetails map[string]interface{}
+	if err := json.Unmarshal([]byte(payload), &obcDetails); err != nil {
+		logger.Error(err, "handleObcDelete: Failed to unmarshal payload")
+		return status.Errorf(codes.Internal, "Failed to unmarshal payload: %v", err)
+	}
+	// extract name and namespace
+	obcNameClient, err := getRequiredStringField(obcDetails, "name")
+	if err != nil {
+		logger.Error(err, "handleObcDelete: Failed to extract OBC name from payload")
+		return status.Errorf(codes.InvalidArgument, "Failed to extract OBC name from payload: %v", err)
+	}
+	namespaceNameClient, err := getRequiredStringField(obcDetails, "namespace")
+	if err != nil {
+		logger.Error(err, "handleObcDelete: Failed to extract OBC namespace from payload")
+		return status.Errorf(codes.InvalidArgument, "Failed to extract OBC namespace from payload: %v", err)
+	}
+	// (2) get the hashed name of the OBC
+	obcHashedName := getObcHashedName(storageConsumerUUID, obcNameClient, namespaceNameClient)
+
+	// (3) delete the OBC
+	logger.Info("handleObcDelete: Deleting OBC resource", "name", obcHashedName, "namespace", s.namespace)
+	obc := &nbv1.ObjectBucketClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      obcHashedName,
+			Namespace: s.namespace,
+		},
+	}
+	if err := s.client.Delete(ctx, obc); err != nil {
+		if client.IgnoreNotFound(err) == nil {
+			logger.Info("handleObcDelete: OBC not found", "name", obcHashedName, "namespace", s.namespace)
+			return status.Errorf(codes.NotFound, "OBC not found name %s namespace %s", obcNameClient, namespaceNameClient)
+		}
+		logger.Error(err, "handleObcDelete: Failed to delete OBC resource", "name", obcHashedName, "namespace", s.namespace)
+		return status.Errorf(codes.Internal, "failed to delete OBC name %s namespace %s: %v", obcNameClient, namespaceNameClient, err)
+	}
+	logger.Info("handleObcDelete: Successfully deleted OBC resource", "name", obcHashedName, "namespace", s.namespace)
 	return nil
 }
 
@@ -168,6 +217,13 @@ func getObcHash(storageConsumerUUID, obcName, obcNamespace string) string {
 	}
 	md5Sum := md5.Sum(obcHash)
 	return hex.EncodeToString(md5Sum[:16])
+}
+
+// getObcHashedName creates a stable hash for OBC name
+// obcName and obcNamespace are from the client cluster
+func getObcHashedName(storageConsumerUUID, obcName, obcNamespace string) string {
+	hash := getObcHash(storageConsumerUUID, obcName, obcNamespace)
+	return fmt.Sprintf("%s-%s", prefixOfHashedName, hash)
 }
 
 // getRequiredStringField extracts a required string field from the decoded payload map
