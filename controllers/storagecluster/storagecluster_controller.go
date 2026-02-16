@@ -144,6 +144,9 @@ func (r *StorageClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			newObj := e.ObjectNew.(*ocsv1alpha1.StorageConsumer)
 			return !reflect.DeepEqual(oldObj.Status.Client, newObj.Status.Client)
 		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return true
+		},
 	}
 
 	enqueueStorageClusterRequest := handler.EnqueueRequestsFromMapFunc(
