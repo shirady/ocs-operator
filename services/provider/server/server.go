@@ -2398,6 +2398,10 @@ func (s *OCSProviderServer) handleObcCreated(ctx context.Context, storageConsume
 
 	logger.Info("CreateOrUpdate OBC object", "OBC Name", localObc.Name, "OBC Namespace", localObc.Namespace)
 	if _, err := ctrl.CreateOrUpdate(ctx, s.client, localObc, func() error {
+		if err := controllerutil.SetOwnerReference(storageConsumer, localObc, s.scheme); err != nil {
+			return status.Errorf(codes.Internal, "failed to set owner reference for OBC name %s namespace %s: %v", obcName, obcNamespace, err)
+		}
+
 		if localObc.Labels == nil {
 			localObc.Labels = map[string]string{}
 		}
@@ -2411,10 +2415,6 @@ func (s *OCSProviderServer) handleObcCreated(ctx context.Context, storageConsume
 			localObc.Annotations = map[string]string{}
 		}
 		localObc.Annotations[remoteObcCreationAnnotationKey] = "true"
-
-		if err := controllerutil.SetOwnerReference(storageConsumer, localObc, s.scheme); err != nil {
-			return status.Errorf(codes.Internal, "failed to set owner reference for OBC name %s namespace %s: %v", obcName, obcNamespace, err)
-		}
 
 		localObc.Spec = obc.Spec // shadow copy, under the assumption that that the OBC was send for creation only and would not be used in other places
 		return nil
