@@ -236,11 +236,11 @@ func TestNotify(t *testing.T) {
 				}, obc); err != nil {
 					t.Fatalf("expected OBC to be created: %v", err)
 				}
-				if obc.Labels[remoteObcOriginalNameLabelKey] != obcName {
-					t.Fatalf("expected label %s=test-obc, got %v", remoteObcOriginalNameLabelKey, obc.Labels)
+				if obc.Labels[remoteObcNameLabelKey] != obcName {
+					t.Fatalf("expected label %s=test-obc, got %v", remoteObcNameLabelKey, obc.Labels)
 				}
-				if obc.Labels[remoteObcOriginalNamespaceLabelKey] != obcNamespace {
-					t.Fatalf("expected label %s=app-namespace, got %v", remoteObcOriginalNamespaceLabelKey, obc.Labels)
+				if obc.Labels[remoteObcNamespaceLabelKey] != obcNamespace {
+					t.Fatalf("expected label %s=app-namespace, got %v", remoteObcNamespaceLabelKey, obc.Labels)
 				}
 				if obc.Labels[storageConsumerNameLabelKey] != storageConsumer.Name {
 					t.Fatalf("expected label %s=%s, got %v", storageConsumerNameLabelKey, storageConsumer.Name, obc.Labels)
@@ -315,9 +315,9 @@ func TestNotify(t *testing.T) {
 						Name:      obcHashedName,
 						Namespace: testNamespace,
 						Labels: map[string]string{
-							remoteObcOriginalNameLabelKey:      obcName,
-							remoteObcOriginalNamespaceLabelKey: obcNamespace,
-							storageConsumerNameLabelKey:        storageConsumer.Name,
+							remoteObcNameLabelKey:       obcName,
+							remoteObcNamespaceLabelKey:  obcNamespace,
+							storageConsumerNameLabelKey: storageConsumer.Name,
 						},
 					},
 				}

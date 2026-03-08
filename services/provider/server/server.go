@@ -85,13 +85,13 @@ const (
 	clientInfoRbdClientProfileKey = "csiop-rbd-client-profile"
 	csiCephUserCurrGen            = 1
 
-	remoteObcCreationAnnotationKey     = "remote-obc-creation"
-	remoteObcOriginalNameLabelKey      = "remote-obc-original-name"
-	remoteObcOriginalNamespaceLabelKey = "remote-obc-original-namespace"
-	remoteObcOriginalUIDLabelKey       = "remote-obc-original-uid"
-	storageConsumerNameLabelKey        = "storage-consumer-name"
-	storageConsumerUUIDLabelKey        = "storage-consumer-uuid"
-	prefixOfHashedName                 = "remote-obc"
+	remoteObcCreationAnnotationKey = "remote-obc-creation"
+	remoteObcNameLabelKey          = "remote-obc-name"
+	remoteObcNamespaceLabelKey     = "remote-obc-namespace"
+	remoteObcUIDLabelKey           = "remote-obc-uid"
+	storageConsumerNameLabelKey    = "storage-consumer-name"
+	storageConsumerUUIDLabelKey    = "storage-consumer-uuid"
+	prefixOfHashedName             = "remote-obc"
 )
 
 var (
@@ -2374,7 +2374,7 @@ func (s *OCSProviderServer) Notify(ctx context.Context, req *pb.NotifyRequest) (
 //   - OBC is created in the storage consumer namespace (and not the provider server namespace in case it would be moved)
 //   - The OBC is named with an obscure name to avoid collisions
 //   - Owner reference is set to the storage consumer
-//   - Label added: original indicates that the information is about the client cluster OBC
+//   - Label added: indicates that the information is about the client cluster OBC
 //   - Annotations added: "remote-obc-creation": "true" (used by MCG CLI)
 func (s *OCSProviderServer) handleObcCreated(ctx context.Context, storageConsumer *ocsv1alpha1.StorageConsumer, obc *nbv1.ObjectBucketClaim) error {
 	storageConsumerUUID := string(storageConsumer.UID)
@@ -2382,7 +2382,7 @@ func (s *OCSProviderServer) handleObcCreated(ctx context.Context, storageConsume
 
 	obcName := obc.Name
 	obcNamespace := obc.Namespace
-	logger.Info("Starting handleObcCreated", "Original OBC Name", obcName, "OBC Namespace", obcNamespace)
+	logger.Info("Starting handleObcCreated", "remote OBC Name", obcName, "remote OBC Namespace", obcNamespace)
 
 	localObc := &nbv1.ObjectBucketClaim{}
 	localObc.Name = getObcHashedName(client.ObjectKeyFromObject(storageConsumer), obcName, obcNamespace)
@@ -2395,9 +2395,9 @@ func (s *OCSProviderServer) handleObcCreated(ctx context.Context, storageConsume
 		}
 		localObc.Labels[storageConsumerNameLabelKey] = storageConsumer.Name
 		localObc.Labels[storageConsumerUUIDLabelKey] = storageConsumerUUID
-		localObc.Labels[remoteObcOriginalNameLabelKey] = obcName
-		localObc.Labels[remoteObcOriginalNamespaceLabelKey] = obcNamespace
-		localObc.Labels[remoteObcOriginalUIDLabelKey] = string(obc.UID)
+		localObc.Labels[remoteObcNameLabelKey] = obcName
+		localObc.Labels[remoteObcNamespaceLabelKey] = obcNamespace
+		localObc.Labels[remoteObcUIDLabelKey] = string(obc.UID)
 
 		if localObc.Annotations == nil {
 			localObc.Annotations = map[string]string{}
@@ -2426,12 +2426,12 @@ func (s *OCSProviderServer) handleObcDeleted(ctx context.Context, storageConsume
 
 	obcName := obcNamespacedName.Name
 	obcNamespace := obcNamespacedName.Namespace
-	logger.Info("Starting handleObcDeleted", "Original OBC Name", obcName, "OBC Namespace", obcNamespace)
+	logger.Info("Starting handleObcDeleted", "remote OBC Name", obcName, "remote OBC Namespace", obcNamespace)
 
 	labelSelector := map[string]string{
-		remoteObcOriginalNameLabelKey:      obcName,
-		remoteObcOriginalNamespaceLabelKey: obcNamespace,
-		storageConsumerNameLabelKey:        storageConsumer.Name,
+		remoteObcNameLabelKey:       obcName,
+		remoteObcNamespaceLabelKey:  obcNamespace,
+		storageConsumerNameLabelKey: storageConsumer.Name,
 	}
 	localObcNamespace := storageConsumer.Namespace
 	obcList := &nbv1.ObjectBucketClaimList{}
