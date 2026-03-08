@@ -2376,7 +2376,11 @@ func (s *OCSProviderServer) Notify(ctx context.Context, req *pb.NotifyRequest) (
 //   - Owner reference is set to the storage consumer
 //   - Label added: indicates that the information is about the client cluster OBC
 //   - Annotations added: "remote-obc-creation": "true" (used by MCG CLI)
-func (s *OCSProviderServer) handleObcCreated(ctx context.Context, storageConsumer *ocsv1alpha1.StorageConsumer, obc *nbv1.ObjectBucketClaim) error {
+func (s *OCSProviderServer) handleObcCreated(
+	ctx context.Context,
+	storageConsumer *ocsv1alpha1.StorageConsumer,
+	obc *nbv1.ObjectBucketClaim,
+) error {
 	storageConsumerUUID := string(storageConsumer.UID)
 	logger := klog.
 		FromContext(ctx).
@@ -2428,7 +2432,11 @@ func (s *OCSProviderServer) handleObcCreated(ctx context.Context, storageConsume
 // It is a synchronous call, we do not wait for resources to be deleted.
 // Notes:
 //   - OBC is deleted from the storage consumer namespace using the labels set during creation.
-func (s *OCSProviderServer) handleObcDeleted(ctx context.Context, storageConsumer *ocsv1alpha1.StorageConsumer, obcNamespacedName types.NamespacedName) error {
+func (s *OCSProviderServer) handleObcDeleted(
+	ctx context.Context,
+	storageConsumer *ocsv1alpha1.StorageConsumer,
+	obcNamespacedName types.NamespacedName,
+) error {
 	storageConsumerUUID := string(storageConsumer.UID)
 	logger := klog.
 		FromContext(ctx).
@@ -2470,7 +2478,11 @@ func (s *OCSProviderServer) handleObcDeleted(ctx context.Context, storageConsume
 
 // getObcHashedName creates a stable hash for OBC name
 // obcName and obcNamespace are from the client cluster
-func getObcHashedName(storageConsumerNamespacedName types.NamespacedName, obcName string, obcNamespace string) string {
+func getObcHashedName(
+	storageConsumerNamespacedName types.NamespacedName,
+	obcName string,
+	obcNamespace string,
+) string {
 	s := struct {
 		StorageConsumerNamespace string `json:"storageConsumerNamespace"`
 		StorageConsumerName      string `json:"storageConsumerName"`
