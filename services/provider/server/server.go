@@ -2483,12 +2483,7 @@ func getObcHashedName(
 	obcName string,
 	obcNamespace string,
 ) string {
-	s := struct {
-		StorageConsumerNamespace string `json:"storageConsumerNamespace"`
-		StorageConsumerName      string `json:"storageConsumerName"`
-		ObcName                  string `json:"obcName"`
-		ObcNamespace             string `json:"obcNamespace"`
-	}{
+	s := []any{
 		storageConsumerNamespacedName.Namespace,
 		storageConsumerNamespacedName.Name,
 		obcName,
