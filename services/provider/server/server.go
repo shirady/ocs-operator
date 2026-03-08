@@ -2378,7 +2378,15 @@ func (s *OCSProviderServer) Notify(ctx context.Context, req *pb.NotifyRequest) (
 //   - Annotations added: "remote-obc-creation": "true" (used by MCG CLI)
 func (s *OCSProviderServer) handleObcCreated(ctx context.Context, storageConsumer *ocsv1alpha1.StorageConsumer, obc *nbv1.ObjectBucketClaim) error {
 	storageConsumerUUID := string(storageConsumer.UID)
-	logger := klog.FromContext(ctx).WithName("handleObcCreated").WithValues("storageConsumerUUID", storageConsumerUUID, "storageConsumer name", storageConsumer.Name)
+	logger := klog.
+		FromContext(ctx).
+		WithName("handleObcCreated").
+		WithValues(
+			"storageConsumerUUID",
+			storageConsumerUUID,
+			"storageConsumer name",
+			storageConsumer.Name,
+		)
 
 	obcName := obc.Name
 	obcNamespace := obc.Namespace
@@ -2422,7 +2430,15 @@ func (s *OCSProviderServer) handleObcCreated(ctx context.Context, storageConsume
 //   - OBC is deleted from the storage consumer namespace using the labels set during creation.
 func (s *OCSProviderServer) handleObcDeleted(ctx context.Context, storageConsumer *ocsv1alpha1.StorageConsumer, obcNamespacedName types.NamespacedName) error {
 	storageConsumerUUID := string(storageConsumer.UID)
-	logger := klog.FromContext(ctx).WithName("handleObcDeleted").WithValues("storageConsumerUUID", storageConsumerUUID, "storageConsumer name", storageConsumer.Name)
+	logger := klog.
+		FromContext(ctx).
+		WithName("handleObcDeleted").
+		WithValues(
+			"storageConsumerUUID",
+			storageConsumerUUID,
+			"storageConsumer name",
+			storageConsumer.Name,
+		)
 
 	obcName := obcNamespacedName.Name
 	obcNamespace := obcNamespacedName.Namespace
