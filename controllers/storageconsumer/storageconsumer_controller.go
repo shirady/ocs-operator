@@ -368,7 +368,9 @@ func (r *StorageConsumerReconciler) reconcileEnabledPhases() (reconcile.Result, 
 			}
 		}
 
+		r.Log.Info("SDSD before Force deletion annotation check")
 		if hasForceDeleteAnnotation {
+			r.Log.Info("SDSD Force deletion annotation found for StorageConsumer. Deleting OBCs.")
 			obcList := &nbv1.ObjectBucketClaimList{}
 			labelSelector := map[string]string{
 				storageConsumerUUIDLabelKey: string(r.storageConsumer.UID),
