@@ -63,6 +63,7 @@ const (
 	primaryConsumerUIDAnnotation  = "ocs.openshift.io/primary-consumer-uid"
 	blockPoolNameLabel            = "ocs.openshift.io/cephblockpool-name"
 	csiCephUserCurrGen            = 1
+	storageConsumerUUIDLabelKey   = "storage-consumer-uuid" // same as in server package
 )
 
 // StorageConsumerReconciler reconciles a StorageConsumer object
@@ -85,6 +86,7 @@ type StorageConsumerReconciler struct {
 // +kubebuilder:rbac:groups=ceph.rook.io,resources=cephblockpools;cephfilesystems;cephnfses,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;delete
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;delete
+// +kubebuilder:rbac:groups=objectbucket.io,resources=objectbucketclaims,verbs=get;list;delete;patch
 
 // Reconcile reads that state of the cluster for a StorageConsumer object and makes changes based on the state read
 // and what is in the StorageConsumer.Spec
@@ -363,6 +365,27 @@ func (r *StorageConsumerReconciler) reconcileEnabledPhases() (reconcile.Result, 
 			svg.Namespace = r.namespace
 			if err := r.Client.Patch(r.ctx, svg, annotationPatch); client.IgnoreNotFound(err) != nil {
 				return reconcile.Result{}, fmt.Errorf("failed to annotate CephFilesystemSubVolumeGroup: %v", err)
+			}
+		}
+
+		if hasForceDeleteAnnotation {
+			obcList := &nbv1.ObjectBucketClaimList{}
+			labelSelector := map[string]string{
+				storageConsumerUUIDLabelKey: string(r.storageConsumer.UID),
+			}
+			if err := r.List(
+				r.ctx,
+				obcList,
+				client.InNamespace(r.namespace),
+				client.MatchingLabels(labelSelector),
+			); err != nil {
+				return reconcile.Result{}, fmt.Errorf("failed to list OBCs for StorageConsumer as part of force deletion: %v", err)
+			}
+			for _, obc := range obcList.Items {
+				if err := r.Client.Delete(r.ctx, &obc); client.IgnoreNotFound(err) != nil {
+					return reconcile.Result{}, fmt.Errorf("failed to delete OBC %s as part of force deletion: %v", obc.Name, err)
+				}
+				r.Log.Info("Deleted OBC during force deletion", "OBC", obc.Name)
 			}
 		}
 
