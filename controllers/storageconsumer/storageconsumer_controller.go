@@ -318,6 +318,30 @@ func (r *StorageConsumerReconciler) reconcileEnabledPhases() (reconcile.Result, 
 		r.storageConsumer.Status.State = v1alpha1.StorageConsumerStateDeleting
 		_, hasForceDeleteAnnotation := r.storageConsumer.GetAnnotations()[util.ForceDeletionAnnotationKey]
 
+		r.Log.Info("SDSD before Force deletion annotation check")
+		// condition for resources that are not shared with other storage consumers
+		if hasForceDeleteAnnotation {
+			r.Log.Info("SDSD Force deletion annotation found for StorageConsumer. Deleting OBCs.")
+			obcList := &nbv1.ObjectBucketClaimList{}
+			labelSelector := map[string]string{
+				storageConsumerUUIDLabelKey: string(r.storageConsumer.UID),
+			}
+			if err := r.List(
+				r.ctx,
+				obcList,
+				client.InNamespace(r.namespace),
+				client.MatchingLabels(labelSelector),
+			); err != nil {
+				return reconcile.Result{}, fmt.Errorf("failed to list OBCs for StorageConsumer as part of force deletion: %v", err)
+			}
+			for _, obc := range obcList.Items {
+				if err := r.Client.Delete(r.ctx, &obc); client.IgnoreNotFound(err) != nil {
+					return reconcile.Result{}, fmt.Errorf("failed to delete OBC %s as part of force deletion: %v", obc.Name, err)
+				}
+				r.Log.Info("Deleted OBC during force deletion", "OBC", obc.Name)
+			}
+		}
+
 		consumerOwners := 0
 		for i := range consumerConfigMap.OwnerReferences {
 			if consumerConfigMap.OwnerReferences[i].Kind == "StorageConsumer" {
@@ -365,29 +389,6 @@ func (r *StorageConsumerReconciler) reconcileEnabledPhases() (reconcile.Result, 
 			svg.Namespace = r.namespace
 			if err := r.Client.Patch(r.ctx, svg, annotationPatch); client.IgnoreNotFound(err) != nil {
 				return reconcile.Result{}, fmt.Errorf("failed to annotate CephFilesystemSubVolumeGroup: %v", err)
-			}
-		}
-
-		r.Log.Info("SDSD before Force deletion annotation check")
-		if hasForceDeleteAnnotation {
-			r.Log.Info("SDSD Force deletion annotation found for StorageConsumer. Deleting OBCs.")
-			obcList := &nbv1.ObjectBucketClaimList{}
-			labelSelector := map[string]string{
-				storageConsumerUUIDLabelKey: string(r.storageConsumer.UID),
-			}
-			if err := r.List(
-				r.ctx,
-				obcList,
-				client.InNamespace(r.namespace),
-				client.MatchingLabels(labelSelector),
-			); err != nil {
-				return reconcile.Result{}, fmt.Errorf("failed to list OBCs for StorageConsumer as part of force deletion: %v", err)
-			}
-			for _, obc := range obcList.Items {
-				if err := r.Client.Delete(r.ctx, &obc); client.IgnoreNotFound(err) != nil {
-					return reconcile.Result{}, fmt.Errorf("failed to delete OBC %s as part of force deletion: %v", obc.Name, err)
-				}
-				r.Log.Info("Deleted OBC during force deletion", "OBC", obc.Name)
 			}
 		}
 
