@@ -285,6 +285,10 @@ func GetProviderAPIServerDeployment(instance *ocsv1.StorageCluster) *appsv1.Depl
 										},
 									},
 								},
+								{
+									Name:  util.OperatorNamespaceEnvVar,
+									Value: instance.Namespace,
+								},
 							},
 							Ports: []corev1.ContainerPort{
 								{
