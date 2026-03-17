@@ -408,6 +408,7 @@ func StorageClassFromExisting(
 	nfsStorageId,
 	remoteRbdStorageId string,
 ) (*storagev1.StorageClass, error) {
+	fmt.Println("SDSD StorageClassFromExisting")
 	storageClass := &storagev1.StorageClass{}
 	storageClass.Name = storageClassName
 	if err := kubeClient.Get(ctx, client.ObjectKeyFromObject(storageClass), storageClass); err != nil {
@@ -422,6 +423,7 @@ func StorageClassFromExisting(
 	operatorNamespace := consumer.Status.Client.OperatorNamespace
 	// assumption that noobaa is deployed on the same namespace as ocs operator
 	ocsOperatorNamespace, err := GetOperatorNamespace()
+	fmt.Printf("SDSD StorageClassFromExisting: ocsOperatorNamespace=%q err=%v\n", ocsOperatorNamespace, err)
 	if err != nil {
 		return nil, err
 	}
