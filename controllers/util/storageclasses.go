@@ -420,7 +420,12 @@ func StorageClassFromExisting(
 	replicationID := ""
 	groupReplicationID := ""
 	operatorNamespace := consumer.Status.Client.OperatorNamespace
-	NoobaaProvisionerName := consumer.Namespace + NoobaaProvisionerNameSuffix
+	// assumption that noobaa is deployed on the same namespace as ocs operator
+	ocsOperatorNamespace, err := GetOperatorNamespace()
+	if err != nil {
+		return nil, err
+	}
+	NoobaaProvisionerName := ocsOperatorNamespace + NoobaaProvisionerNameSuffix
 	switch storageClass.Provisioner {
 	case RbdDriverName:
 		clientProfileName = consumerConfig.GetRbdClientProfileName()
