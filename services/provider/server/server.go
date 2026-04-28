@@ -26,6 +26,7 @@ import (
 	ocsv1 "github.com/red-hat-storage/ocs-operator/api/v4/v1"
 	ocsv1alpha1 "github.com/red-hat-storage/ocs-operator/api/v4/v1alpha1"
 	pb "github.com/red-hat-storage/ocs-operator/services/provider/api/v4"
+	api_types "github.com/red-hat-storage/ocs-operator/services/provider/api/v4/api_types"
 	"github.com/red-hat-storage/ocs-operator/v4/pkg/defaults"
 	"github.com/red-hat-storage/ocs-operator/v4/pkg/platform"
 	"github.com/red-hat-storage/ocs-operator/v4/pkg/util"
@@ -2649,8 +2650,8 @@ func (s *OCSProviderServer) Notify(ctx context.Context, req *pb.NotifyRequest) (
 		return nil, status.Errorf(codes.Internal, "failed to get StorageConsumer: storageConsumerUUID=%s", req.StorageConsumerUUID)
 	}
 
-	switch req.Reason {
-	case pb.NotifyReason_OBC_CREATED:
+	switch api_types.NotifyReason(req.Reason) {
+	case api_types.NotifyReasonObcCreated:
 		obc := &nbv1.ObjectBucketClaim{}
 		if err := json.Unmarshal(req.Payload, obc); err != nil {
 			logger.Error(err, "Failed to unmarshal OBC created payload")
@@ -2660,7 +2661,7 @@ func (s *OCSProviderServer) Notify(ctx context.Context, req *pb.NotifyRequest) (
 			logger.Error(err, "Failed to handle OBC creation")
 			return nil, err
 		}
-	case pb.NotifyReason_OBC_DELETED:
+	case api_types.NotifyReasonObcDeleted:
 		var obcNamespacedName types.NamespacedName
 		if err := json.Unmarshal(req.Payload, &obcNamespacedName); err != nil {
 			logger.Error(err, "Failed to unmarshal OBC deleted payload")
