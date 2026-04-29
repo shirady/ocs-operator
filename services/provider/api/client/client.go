@@ -8,7 +8,6 @@ import (
 	"time"
 
 	pb "github.com/red-hat-storage/ocs-operator/services/provider/api/v4"
-	api_types "github.com/red-hat-storage/ocs-operator/services/provider/api/v4/api_types"
 	ifaces "github.com/red-hat-storage/ocs-operator/services/provider/api/v4/interfaces"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -195,7 +194,7 @@ func (cc *OCSProviderClient) GetBlockPoolsInfo(ctx context.Context, storageClust
 }
 
 // notifyWithReason RPC call for Notify API request
-func (cc *OCSProviderClient) notifyWithReason(ctx context.Context, consumerUUID string, reason api_types.NotifyReason, payload any) (*pb.NotifyResponse, error) {
+func (cc *OCSProviderClient) notifyWithReason(ctx context.Context, consumerUUID string, reason ifaces.NotifyReason, payload any) (*pb.NotifyResponse, error) {
 	if cc.Client == nil || cc.clientConn == nil {
 		return nil, fmt.Errorf("provider client is closed")
 	}
@@ -219,12 +218,12 @@ func (cc *OCSProviderClient) notifyWithReason(ctx context.Context, consumerUUID 
 
 // NotifyObcCreated RPC call for Notify API request with OBC_CREATED reason
 func (cc *OCSProviderClient) NotifyObcCreated(ctx context.Context, consumerUUID string, obc *nbv1.ObjectBucketClaim) (*pb.NotifyResponse, error) {
-	return cc.notifyWithReason(ctx, consumerUUID, api_types.NotifyReasonObcCreated, obc)
+	return cc.notifyWithReason(ctx, consumerUUID, ifaces.NotifyReasonObcCreated, obc)
 }
 
 // NotifyObcDeleted RPC call for Notify API request with OBC_DELETED reason
 func (cc *OCSProviderClient) NotifyObcDeleted(ctx context.Context, consumerUUID string, obcNamespacedName types.NamespacedName) (*pb.NotifyResponse, error) {
-	return cc.notifyWithReason(ctx, consumerUUID, api_types.NotifyReasonObcDeleted, obcNamespacedName)
+	return cc.notifyWithReason(ctx, consumerUUID, ifaces.NotifyReasonObcDeleted, obcNamespacedName)
 }
 
 // GetClientAlerts RPC call to get firing alerts relevant to a specific storage consumer

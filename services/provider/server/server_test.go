@@ -14,7 +14,7 @@ import (
 
 	ocsv1a1 "github.com/red-hat-storage/ocs-operator/api/v4/v1alpha1"
 	pb "github.com/red-hat-storage/ocs-operator/services/provider/api/v4"
-	api_types "github.com/red-hat-storage/ocs-operator/services/provider/api/v4/api_types"
+	ifaces "github.com/red-hat-storage/ocs-operator/services/provider/api/v4/interfaces"
 	"github.com/red-hat-storage/ocs-operator/v4/pkg/util"
 
 	nbv1 "github.com/noobaa/noobaa-operator/v5/pkg/apis/noobaa/v1alpha1"
@@ -204,7 +204,7 @@ func TestNotify(t *testing.T) {
 			},
 			req: &pb.NotifyRequest{
 				StorageConsumerUUID: string(storageConsumer.UID),
-				Reason:              uint32(api_types.NotifyReasonUnknown),
+				Reason:              uint32(ifaces.NotifyReasonUnknown),
 			},
 			ExpectedErrorCode: codes.InvalidArgument,
 		},
@@ -215,7 +215,7 @@ func TestNotify(t *testing.T) {
 			},
 			req: &pb.NotifyRequest{
 				StorageConsumerUUID: "non-existent-uuid",
-				Reason:              uint32(api_types.NotifyReasonObcCreated),
+				Reason:              uint32(ifaces.NotifyReasonObcCreated),
 				Payload:             obcCreatePayloadBytes,
 			},
 			ExpectedErrorCode: codes.Internal,
@@ -227,7 +227,7 @@ func TestNotify(t *testing.T) {
 			},
 			req: &pb.NotifyRequest{
 				StorageConsumerUUID: string(storageConsumer.UID),
-				Reason:              uint32(api_types.NotifyReasonObcCreated),
+				Reason:              uint32(ifaces.NotifyReasonObcCreated),
 				Payload:             obcCreatePayloadBytes,
 			},
 			ExpectedErrorCode: codes.OK,
@@ -283,7 +283,7 @@ func TestNotify(t *testing.T) {
 			},
 			req: &pb.NotifyRequest{
 				StorageConsumerUUID: string(storageConsumer.UID),
-				Reason:              uint32(api_types.NotifyReasonObcCreated),
+				Reason:              uint32(ifaces.NotifyReasonObcCreated),
 				Payload:             []byte("not valid json"),
 			},
 			ExpectedErrorCode: codes.InvalidArgument,
@@ -305,7 +305,7 @@ func TestNotify(t *testing.T) {
 			},
 			req: &pb.NotifyRequest{
 				StorageConsumerUUID: string(storageConsumer.UID),
-				Reason:              uint32(api_types.NotifyReasonObcCreated),
+				Reason:              uint32(ifaces.NotifyReasonObcCreated),
 				Payload:             obcCreatePayloadBytes,
 			},
 			ExpectedErrorCode: codes.OK,
@@ -332,7 +332,7 @@ func TestNotify(t *testing.T) {
 			},
 			req: &pb.NotifyRequest{
 				StorageConsumerUUID: string(storageConsumer.UID),
-				Reason:              uint32(api_types.NotifyReasonObcDeleted),
+				Reason:              uint32(ifaces.NotifyReasonObcDeleted),
 				Payload:             obcDeletepayloadBytes,
 			},
 			ExpectedErrorCode: codes.OK,
@@ -361,7 +361,7 @@ func TestNotify(t *testing.T) {
 			},
 			req: &pb.NotifyRequest{
 				StorageConsumerUUID: string(storageConsumer.UID),
-				Reason:              uint32(api_types.NotifyReasonObcDeleted),
+				Reason:              uint32(ifaces.NotifyReasonObcDeleted),
 				Payload:             obcDeletepayloadBytes,
 			},
 			ExpectedErrorCode: codes.OK,
